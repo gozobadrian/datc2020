@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.WindowsAzure.Storage;
@@ -74,9 +75,20 @@ namespace students.api
             await _studentsTable.ExecuteAsync(TableOperation.Delete(entity));
         }
 
-        public Task EditStudent(StudentEntity student)
+        public async Task EditStudent(StudentEntity student)
         {
-            throw new System.NotImplementedException();
+            var editOperation = TableOperation.Merge(student);
+
+            // Implemented using optimistic concurrency
+            try
+            {
+                await _studentsTable.ExecuteAsync(editOperation);
+            }
+            catch (StorageException e)
+            {
+                if (e.RequestInformation.HttpStatusCode == (int)HttpStatusCode.PreconditionFailed)
+                    throw new System.Exception("Entitatea a fost deja modificata. Te rog sa reincarci entitatea!");
+            }
         }
 
         private async Task InitializeTable()
